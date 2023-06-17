@@ -1,9 +1,10 @@
 {
-  "name": "Personal Projects",
+  "name": "TycoonKit",
   "tree": {
     "$className": "DataModel",
 
     "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
       "Packages": {
         "$path": "Packages"
       },
@@ -13,10 +14,14 @@
     },
 
     "ServerStorage": {
-      "$path": "src/ServerStorage"
+      "$className": "ServerStorage",
+      "src": {
+        "$path": "src/ServerStorage"
+      }
     },
 
     "ServerScriptService": {
+      "$className": "ServerScriptService",
       "$path": "src/ServerScriptService"
     },
 

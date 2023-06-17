@@ -1,0 +1,1 @@
+-- This script will intiialise the tycoon creation, and serve as the connector.
