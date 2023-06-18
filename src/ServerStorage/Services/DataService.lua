@@ -42,7 +42,7 @@ function DataService:KnitStart()
     Players.PlayerRemoving:Connect(function(Player: Player)
         local Profile = self.Profiles[Player]
         if Profile then
-            Profile:Release()
+            Profile.Profile:Release()
         end
         self.Callbacks[Player] = nil
     end)
@@ -97,7 +97,10 @@ function DataService:AttachFunction(Player: Player, Key: string, Callback: ()->(
     if not self.Callbacks[Player] then
         self.Callbacks[Player] = {}
     end
-    self.Callbacks[Player][Key] = Callback
+    if not self.Callbacks[Player][Key] then
+        self.Callbacks[Player][Key] = {}
+    end
+    table.insert(self.Callbacks[Player][Key], Callback)
 end
 
 

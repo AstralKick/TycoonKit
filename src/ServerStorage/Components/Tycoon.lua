@@ -71,8 +71,9 @@ function TycoonTemplate:Claim(Player: Player)
     end)
 
     self._trove:Add(self.interactables.Collect.Touched:Connect(function()
-        local Success, Current = DataService:GetKey(self.owner, "TycoonData"):await()
-        DataService:SetKey(self.owner, "Currency", Current.Bank):await()
+        local succ, Current = DataService:GetKey(self.owner, "TycoonData"):await()
+        local Success, Currency = DataService:GetKey(self.owner, "Currency"):await()
+        DataService:SetKey(self.owner, "Currency", Currency + Current.Bank):await()
         Current.Bank = 0
         DataService:SetKey(self.owner, "TycoonData", Current):await()
         self.interactables.Collect.SurfaceGui.TextLabel.Text = "£"..Current.Bank

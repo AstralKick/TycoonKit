@@ -19,6 +19,7 @@ local TycoonComponent = require(Components.Tycoon);
 Players.PlayerAdded:Connect(function(Player: Player)
     local leaderstats = Instance.new("Folder")
     leaderstats.Name = "leaderstats"
+    leaderstats.Parent = Player
     
     local number = Instance.new("NumberValue")
     number.Parent = leaderstats
