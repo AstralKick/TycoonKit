@@ -60,37 +60,39 @@ function TycoonTemplate:Claim(Player: Player)
         Counter += dt
         if Counter >= CashUpdate then
             Counter = Counter - CashUpdate
-
-            local Profile = DataService:GetProfile(Player)
-            Profile.Data.TycoonData.Bank += 50
-            self.interactables.Claim.SurfaceGui.TextLabel.Text = "£"..Profile.Data.TycoonData.Bank
+            local Success, Current = DataService:GetKey(self.owner, "TycoonData"):await()
+            Current.Bank += 50
+            DataService:SetKey(self.owner, "TycoonData", Current):await()
+            self.interactables.Collect.SurfaceGui.TextLabel.Text = "£"..Current.Bank
             warn("Player awarded +50 in the bank")
         end
     end), function()
         Counter = 0
     end)
 
-    self._trove:Add(self.interactables.Claim.Touched:Connect(function()
-        local Profile = DataService:GetProfile(Player)
-        Profile.Data.Currency += Profile.Data.TycoonData.Bank
-        Profile.Data.TycoonData.Bank = 0
-        self.interactables.Claim.SurfaceGui.TextLabel.Text = "£"..Profile.Data.TycoonData.Bank
+    self._trove:Add(self.interactables.Collect.Touched:Connect(function()
+        local Success, Current = DataService:GetKey(self.owner, "TycoonData"):await()
+        DataService:SetKey(self.owner, "Currency", Current.Bank):await()
+        Current.Bank = 0
+        DataService:SetKey(self.owner, "TycoonData", Current):await()
+        self.interactables.Collect.SurfaceGui.TextLabel.Text = "£"..Current.Bank
     end), function() 
-        self.interactables.Claim.SurfaceGui.TextLabel.Text = ""
+        self.interactables.Collect.SurfaceGui.TextLabel.Text = ""
     end)
 end
 
 function TycoonTemplate:LoadData()
     return Promise.new(function(Resolve, Reject)
-        local Profile = DataService:GetProfile(self.owner)
-        local Data = Profile.Data
+        local Success, Unlocks = DataService:GetKey(self.owner, "Unlocks"):await()
 
-        if #Data.Unlocks then
-            warn("Data exists")
-            Resolve(Data.Unlocks)
-        else
-            warn("Data doesnt exist")
-            Reject("Data doesn't exist")
+        if Success then
+            if #Unlocks > 0 then
+                warn("Data exists")
+                Resolve(Unlocks)
+            else
+                warn("Data doesnt exist")
+                Reject("Data doesn't exist")
+            end
         end
     end)
 end

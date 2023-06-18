@@ -10,10 +10,12 @@ local Knit = require(Packages.Knit);
 local ProfileService = require(Packages.ProfileService);
 local Promise = require(Knit.Util.Promise);
 local Trove = require(Packages.Trove);
+local ReplicaService = require(ServerStorage.src.Modules.ReplicaService);
 
 -- Data
 local ProfileTemplate = require(ServerStorage.src.Modules.ProfileTemplate);
 local Products = require(ServerStorage.src.Modules.Products);
+local PlayerProfileClassToken = ReplicaService.NewClassToken("PlayerProfile")
 
 -- Setup Profile
 local ProfileStore = ProfileService.GetProfileStore(
@@ -25,6 +27,7 @@ local DataService = Knit.CreateService{
     Name = "DataService",
     Client = {},
     Profiles = {},
+    Callbacks = {},
 }
 
 function DataService:KnitStart()
@@ -41,6 +44,7 @@ function DataService:KnitStart()
         if Profile then
             Profile:Release()
         end
+        self.Callbacks[Player] = nil
     end)
 end
 
@@ -50,12 +54,22 @@ function DataService:LoadData(Player: Player)
         Profile:AddUserId(Player.UserId)
         Profile:Reconcile()
         Profile:ListenToRelease(function()
+            self.Profiles[Player].Replica:Destroy()
             self.Profiles[Player] = nil
             Player:Kick("Your data has been loaded elsewhere.")
         end)
 
         if Player:IsDescendantOf(Players) then
-            self.Profiles[Player] = Profile
+            local PlayerProfile = {
+                Profile = Profile,
+                Replica = ReplicaService.NewReplica{
+                    ClassToken = PlayerProfileClassToken,
+                    Tags = {Player = Player},
+                    Data = Profile.Data,
+                    Replication = "All"
+                }
+            }
+            self.Profiles[Player] = PlayerProfile
             warn("Data loaded for user "..Player.Name)
         else
             Profile:Release()
@@ -66,18 +80,34 @@ end
 function DataService:SetKey(Player: Player, Key: string, Value: any)
     return Promise.new(function(Resolve, Reject)
         local Profile = self:GetProfile(Player)
-        Profile.Data.Key = Value
+        Profile.Profile.Data[Key] = Value
+        Profile.Replica:SetValue({Key}, Value)
+        if self.Callbacks[Player] then
+            if self.Callbacks[Player][Key] then
+                for _,Func in pairs (self.Callbacks[Player][Key]) do
+                    Func(Value)
+                end
+            end
+        end
         Resolve()
     end)
 end
 
+function DataService:AttachFunction(Player: Player, Key: string, Callback: ()->())
+    if not self.Callbacks[Player] then
+        self.Callbacks[Player] = {}
+    end
+    self.Callbacks[Player][Key] = Callback
+end
+
+
 function DataService:GetKey(Player: Player, Key: string)
     return Promise.new(function(Resolve, Reject)
         local Profile = self:GetProfile(Player)
-        if not Profile.Data[Key] then
+        if not Profile.Profile.Data[Key] then
             Reject()
         else
-            Resolve(Profile.Data.Key)
+            Resolve(Profile.Profile.Data[Key])
         end
     end)
 end
@@ -141,7 +171,7 @@ local function PurchaseCheck(Profile, PurchaseId: number, callback: ()->())
 end
 
 local function GrantProduct(Player: Player, ProductId: number)
-    local Profile = DataService:GetProfile(Player)
+    local Profile = DataService:GetProfile(Player).Profile
     local ProductFunction = Products.Products[ProductId]
     if ProductFunction then
         ProductFunction(Player, Profile)
@@ -156,7 +186,7 @@ local function ProcessReceipt(ReceiptInfo)
         return Enum.ProductPurchaseDecision.NotProcessedYet
     end
 
-    local Profile = DataService:GetProfile(Player)
+    local Profile = DataService:GetProfile(Player).Profile
 
     if Profile then
         return PurchaseCheck(
